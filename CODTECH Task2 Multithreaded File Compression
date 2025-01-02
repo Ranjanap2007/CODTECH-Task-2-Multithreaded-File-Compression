@@ -1,0 +1,147 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <thread>
+#include <mutex>
+
+std::mutex cout_mutex;
+
+void compress_chunk(const std::string& input_chunk, std::string& output_chunk) {
+    output_chunk = "";
+    char prev_char = input_chunk[0];
+    int count = 1;
+    for (size_t i = 1; i < input_chunk.size(); ++i) {
+        if (input_chunk[i] == prev_char) {
+            ++count;
+        } else {
+            output_chunk += prev_char + std::to_string(count);
+            prev_char = input_chunk[i];
+            count = 1;
+        }
+    }
+    output_chunk += prev_char + std::to_string(count);  // Last character
+}
+
+void compress_file(const std::string& input_file, const std::string& output_file) {
+    std::ifstream infile(input_file, std::ios::binary);
+    std::ofstream outfile(output_file, std::ios::binary);
+    
+    if (!infile || !outfile) {
+        std::cerr << "File opening failed!" << std::endl;
+        return;
+    }
+
+    std::vector<std::thread> threads;
+    std::vector<std::string> input_chunks;
+    std::vector<std::string> output_chunks;
+    
+    const size_t chunk_size = 1024;  // Size of each chunk to process
+
+    // Read the file into chunks
+    std::string line;
+    while (std::getline(infile, line)) {
+        input_chunks.push_back(line);
+    }
+
+    // Create threads to process chunks
+    for (size_t i = 0; i < input_chunks.size(); ++i) {
+        threads.push_back(std::thread([&input_chunks, &output_chunks, i]() {
+            std::string compressed_chunk;
+            compress_chunk(input_chunks[i], compressed_chunk);
+            output_chunks.push_back(compressed_chunk);
+        }));
+    }
+
+    // Wait for all threads to finish
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    // Write compressed data to the output file
+    for (const auto& chunk : output_chunks) {
+        outfile << chunk;
+    }
+}
+
+void decompress_chunk(const std::string& input_chunk, std::string& output_chunk) {
+    output_chunk = "";
+    size_t i = 0;
+    while (i < input_chunk.size()) {
+        char character = input_chunk[i++];
+        std::string number = "";
+        while (i < input_chunk.size() && std::isdigit(input_chunk[i])) {
+            number += input_chunk[i++];
+        }
+        int count = std::stoi(number);
+        output_chunk.append(count, character);
+    }
+}
+
+void decompress_file(const std::string& input_file, const std::string& output_file) {
+    std::ifstream infile(input_file, std::ios::binary);
+    std::ofstream outfile(output_file, std::ios::binary);
+    
+    if (!infile || !outfile) {
+        std::cerr << "File opening failed!" << std::endl;
+        return;
+    }
+
+    std::vector<std::thread> threads;
+    std::vector<std::string> input_chunks;
+    std::vector<std::string> output_chunks;
+    
+    const size_t chunk_size = 1024;  // Size of each chunk to process
+
+    // Read the file into chunks
+    std::string line;
+    while (std::getline(infile, line)) {
+        input_chunks.push_back(line);
+    }
+
+    // Create threads to process chunks
+    for (size_t i = 0; i < input_chunks.size(); ++i) {
+        threads.push_back(std::thread([&input_chunks, &output_chunks, i]() {
+            std::string decompressed_chunk;
+            decompress_chunk(input_chunks[i], decompressed_chunk);
+            output_chunks.push_back(decompressed_chunk);
+        }));
+    }
+
+    // Wait for all threads to finish
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    // Write decompressed data to the output file
+    for (const auto& chunk : output_chunks) {
+        outfile << chunk;
+    }
+}
+
+int main() {
+    std::string input_file = "input.txt";   // Replace with your input file
+    std::string compressed_file = "compressed.txt"; // Output compressed file
+    std::string decompressed_file = "decompressed.txt"; // Output decompressed file
+
+    // Compress the file
+    std::cout << "Compressing file..." << std::endl;
+    compress_file(input_file, compressed_file);
+    
+    // Decompress the file
+    std::cout << "Decompressing file..." << std::endl;
+    decompress_file(compressed_file, decompressed_file);
+
+    std::cout << "Compression and Decompression completed!" << std::endl;
+
+    return 0;
+}
+OUTPUT:-
+Compressing file...
+File opening failed!
+Decompressing file...
+File opening failed!
+Compression and Decompression completed!
+
+
+=== Code Execution Successful ===
